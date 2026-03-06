@@ -3,40 +3,92 @@
 <head>
 <title>IPL Auction</title>
 <style>
-body {font-family: Arial; text-align:center;}
-table {margin:auto; border-collapse: collapse;}
-td,th {border:1px solid black; padding:10px;}
+
+body{
+font-family: Arial;
+background:#f4f4f4;
+}
+
+table{
+border-collapse: collapse;
+width:100%;
+background:white;
+}
+
+th,td{
+padding:10px;
+border:1px solid #ddd;
+text-align:center;
+}
+
+th{
+background:#333;
+color:white;
+}
+
+form{
+display:flex;
+gap:5px;
+}
+
+input{
+padding:5px;
+}
+
+button{
+background:green;
+color:white;
+border:none;
+padding:5px 10px;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>IPL Auction</h1>
+<h1>IPL Auction Dashboard</h1>
 
 <table>
+
 <tr>
 <th>Player</th>
+<th>Team</th>
+<th>Current Bid</th>
 <th>Company</th>
-<th>Price</th>
+<th>Bid</th>
 </tr>
 
 {% for p in players %}
+
 <tr>
-<td>{{p[0]}}</td>
-<td>{{p[1]}}</td>
-<td>{{p[2]}}</td>
-</tr>
-{% endfor %}
-</table>
 
-<h2>Place Bid</h2>
+<td>{{p.name}}</td>
+<td>{{p.team}}</td>
+<td>{{p.current_bid}}</td>
+<td>{{p.company}}</td>
 
-<form action="/bid" method="post">
-Player: <input name="player"><br><br>
-Company: <input name="company"><br><br>
-Price: <input name="price"><br><br>
-<button type="submit">Submit Bid</button>
+<td>
+
+<form action="/bid" method="POST">
+
+<input type="hidden" name="player_id" value="{{p.id}}">
+
+<input type="text" name="company" placeholder="Company" required>
+
+<input type="number" name="price" placeholder="Bid Price" required>
+
+<button type="submit">Bid</button>
+
 </form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
 
 </body>
 </html>
