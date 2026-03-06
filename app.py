@@ -1,62 +1,64 @@
-from flask import Flask, request, jsonify
-import json
-import os
+from flask import Flask, request, render_template, redirect
+import sqlite3
 
 app = Flask(__name__)
 
-DATA_FILE = "players.json"
+DB = "players.db"
 
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "w") as f:
-            json.dump({}, f)
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS players (
+        name TEXT PRIMARY KEY,
+        company TEXT,
+        price INTEGER
+    )
+    """)
+    conn.commit()
+    conn.close()
 
-    with open(DATA_FILE, "r") as f:
-        content = f.read().strip()
-        if not content:
-            return {}
-        return json.loads(content)
 
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+def get_players():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("SELECT * FROM players")
+    players = c.fetchall()
+    conn.close()
+    return players
 
 
 @app.route("/")
 def home():
-    data = load_data()
-    return jsonify(data)
+    players = get_players()
+    return render_template("index.html", players=players)
 
 
 @app.route("/bid", methods=["POST"])
 def bid():
-    player = request.json.get("player")
-    company = request.json.get("company")
-    price = int(request.json.get("price"))
+    player = request.form["player"]
+    company = request.form["company"]
+    price = int(request.form["price"])
 
-    data = load_data()
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
-    if player not in data:
-        data[player] = {"company": company, "price": price}
-        save_data(data)
-        return {"message": "Player added", "data": data[player]}
+    c.execute("SELECT price FROM players WHERE name=?", (player,))
+    result = c.fetchone()
 
-    current_price = data[player]["price"]
+    if result is None:
+        c.execute("INSERT INTO players VALUES (?, ?, ?)", (player, company, price))
 
-    if price > current_price:
-        data[player] = {"company": company, "price": price}
-        save_data(data)
-        return {"message": "Bid updated", "data": data[player]}
+    elif price > result[0]:
+        c.execute("UPDATE players SET company=?, price=? WHERE name=?", (company, price, player))
 
-    return {"message": "Bid must be higher than current price"}, 400
+    conn.commit()
+    conn.close()
 
+    return redirect("/")
 
-@app.route("/players")
-def players():
-    return jsonify(load_data())
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
+    init_db()
+    app.run(host="0.0.0.0", port=10000)
