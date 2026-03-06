@@ -11,9 +11,12 @@ def load_data():
     if not os.path.exists(DATA_FILE):
         with open(DATA_FILE, "w") as f:
             json.dump({}, f)
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
 
+    with open(DATA_FILE, "r") as f:
+        content = f.read().strip()
+        if not content:
+            return {}
+        return json.loads(content)
 
 def save_data(data):
     with open(DATA_FILE, "w") as f:
@@ -56,3 +59,4 @@ def players():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
