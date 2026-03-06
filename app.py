@@ -1,59 +1,97 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, render_template, request, redirect
 import sqlite3
+import pandas as pd
+import os
 
 app = Flask(__name__)
 
-DB = "players.db"
+DATABASE = "players.db"
+CSV_FILE = "ipl_auction.csv"
+
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
 def init_db():
-    conn = sqlite3.connect(DB)
+    conn = get_db()
     c = conn.cursor()
+
     c.execute("""
-    CREATE TABLE IF NOT EXISTS players (
-        name TEXT PRIMARY KEY,
-        company TEXT,
-        price INTEGER
+    CREATE TABLE IF NOT EXISTS players(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        team TEXT,
+        base_price INTEGER,
+        current_bid INTEGER,
+        company TEXT
     )
     """)
+
     conn.commit()
     conn.close()
 
 
-def get_players():
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
-    c.execute("SELECT * FROM players")
-    players = c.fetchall()
+def load_dataset():
+    conn = get_db()
+
+    count = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+
+    if count == 0:
+        df = pd.read_csv(CSV_FILE)
+
+        for _, row in df.iterrows():
+
+            base = row.get("BasePrices in Rs", 0)
+
+            conn.execute(
+                "INSERT INTO players(name, team, base_price, current_bid, company) VALUES (?,?,?,?,?)",
+                (
+                    row["Name"],
+                    row.get("TeamName", ""),
+                    base,
+                    base,
+                    ""
+                )
+            )
+
+    conn.commit()
     conn.close()
-    return players
 
 
 @app.route("/")
 def home():
-    players = get_players()
+    conn = get_db()
+    players = conn.execute("SELECT * FROM players ORDER BY current_bid DESC").fetchall()
+    conn.close()
+
     return render_template("index.html", players=players)
 
 
 @app.route("/bid", methods=["POST"])
 def bid():
-    player = request.form["player"]
+    player_id = request.form["player_id"]
     company = request.form["company"]
-    price = int(request.form["price"])
+    bid_price = int(request.form["price"])
 
-    conn = sqlite3.connect(DB)
-    c = conn.cursor()
+    conn = get_db()
 
-    c.execute("SELECT price FROM players WHERE name=?", (player,))
-    result = c.fetchone()
+    player = conn.execute(
+        "SELECT current_bid FROM players WHERE id=?",
+        (player_id,)
+    ).fetchone()
 
-    if result is None:
-        c.execute("INSERT INTO players VALUES (?, ?, ?)", (player, company, price))
+    if bid_price > player["current_bid"]:
 
-    elif price > result[0]:
-        c.execute("UPDATE players SET company=?, price=? WHERE name=?", (company, price, player))
+        conn.execute(
+            "UPDATE players SET current_bid=?, company=? WHERE id=?",
+            (bid_price, company, player_id)
+        )
 
-    conn.commit()
+        conn.commit()
+
     conn.close()
 
     return redirect("/")
@@ -61,4 +99,7 @@ def bid():
 
 if __name__ == "__main__":
     init_db()
-    app.run(host="0.0.0.0", port=10000)
+    load_dataset()
+
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
