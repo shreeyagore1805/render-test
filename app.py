@@ -34,6 +34,8 @@ def init_db():
     conn.commit()
     conn.close()
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CSV_FILE = os.path.join(BASE_DIR, "ipl_auction.csv")
 
 # ---------------- LOAD DATASET ----------------
 def load_players():
@@ -109,3 +111,4 @@ def bid(player_id):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
