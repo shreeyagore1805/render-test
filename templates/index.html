@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>IPL Auction</title>
-<style>
+<title>IPL Auction Dashboard</title>
 
+<style>
 body{
 font-family: Arial;
 background:#f4f4f4;
 }
 
 table{
-border-collapse: collapse;
 width:100%;
+border-collapse:collapse;
 background:white;
 }
 
 th,td{
-padding:10px;
+padding:12px;
 border:1px solid #ddd;
 text-align:center;
 }
@@ -26,23 +26,11 @@ background:#333;
 color:white;
 }
 
-form{
-display:flex;
-gap:5px;
-}
-
 input{
 padding:5px;
 }
-
-button{
-background:green;
-color:white;
-border:none;
-padding:5px 10px;
-}
-
 </style>
+
 </head>
 
 <body>
@@ -59,24 +47,22 @@ padding:5px 10px;
 <th>Bid</th>
 </tr>
 
-{% for p in players %}
+{% for player in players %}
 
 <tr>
 
-<td>{{p.name}}</td>
-<td>{{p.team}}</td>
-<td>{{p.current_bid}}</td>
-<td>{{p.company}}</td>
+<td>{{player.name}}</td>
+<td>{{player.team}}</td>
+<td>{{player.current_bid}}</td>
+<td>{{player.company}}</td>
 
 <td>
 
-<form action="/bid" method="POST">
-
-<input type="hidden" name="player_id" value="{{p.id}}">
+<form action="/bid/{{player.id}}" method="post">
 
 <input type="text" name="company" placeholder="Company" required>
 
-<input type="number" name="price" placeholder="Bid Price" required>
+<input type="number" name="bid" placeholder="Bid Price" required>
 
 <button type="submit">Bid</button>
 
