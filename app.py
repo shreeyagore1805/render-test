@@ -40,21 +40,20 @@ def load_dataset():
     count = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
 
     if count == 0:
+
         df = pd.read_csv(CSV_FILE)
+
+        df.columns = df.columns.str.strip()
 
         for _, row in df.iterrows():
 
-            base = row.get("BasePrices in Rs", 0)
+            name = row.get("Name","Unknown")
+            team = row.get("TeamName","Unknown")
+            base = row.get("BasePrices in Rs",0)
 
             conn.execute(
                 "INSERT INTO players(name, team, base_price, current_bid, company) VALUES (?,?,?,?,?)",
-                (
-                    row["Name"],
-                    row.get("TeamName", ""),
-                    base,
-                    base,
-                    ""
-                )
+                (name, team, base, base, "")
             )
 
     conn.commit()
@@ -103,3 +102,4 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
