@@ -4,15 +4,19 @@ import pandas as pd
 import os
 
 app = Flask(__name__)
-CSV_FILE = "ipl_auction.csv"
-DATABASE = "ipl.db"
 
+DATABASE = "ipl.db"
+CSV_FILE = "ipl_auction.csv"
+
+
+# ---------------- DATABASE CONNECTION ----------------
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
 
+# ---------------- CREATE TABLE ----------------
 def init_db():
     conn = get_db()
 
@@ -30,22 +34,21 @@ def init_db():
     conn.commit()
     conn.close()
 
-def load_dataset():
+
+# ---------------- LOAD DATASET ----------------
+def load_players():
     conn = get_db()
 
     count = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
 
     if count == 0:
-
         df = pd.read_csv(CSV_FILE)
-
         df.columns = df.columns.str.strip()
 
         for _, row in df.iterrows():
-
-            name = row.get("Name","Unknown")
-            team = row.get("TeamName","Unknown")
-            base = row.get("BasePrices in Rs",0)
+            name = row.get("Name", "Unknown")
+            team = row.get("TeamName", "Unknown")
+            base = row.get("BasePrices in Rs", 0)
 
             conn.execute(
                 "INSERT INTO players(name, team, base_price, current_bid, company) VALUES (?,?,?,?,?)",
@@ -55,34 +58,45 @@ def load_dataset():
     conn.commit()
     conn.close()
 
+
+# initialize database and load dataset
 init_db()
+load_players()
+
+
+# ---------------- HOME PAGE ----------------
 @app.route("/")
 def home():
     conn = get_db()
-    players = conn.execute("SELECT * FROM players ORDER BY current_bid DESC").fetchall()
+    players = conn.execute(
+        "SELECT * FROM players ORDER BY current_bid DESC"
+    ).fetchall()
     conn.close()
 
     return render_template("index.html", players=players)
 
 
-@app.route("/bid", methods=["POST"])
-def bid():
-    player_id = request.form["player_id"]
+# ---------------- BIDDING ----------------
+@app.route("/bid/<int:player_id>", methods=["POST"])
+def bid(player_id):
+
     company = request.form["company"]
-    bid_price = int(request.form["price"])
+    bid = int(request.form["bid"])
 
     conn = get_db()
 
     player = conn.execute(
-        "SELECT current_bid FROM players WHERE id=?",
+        "SELECT * FROM players WHERE id=?",
         (player_id,)
     ).fetchone()
 
-    if bid_price > player["current_bid"]:
+    current_bid = player["current_bid"]
+
+    if bid > current_bid:
 
         conn.execute(
             "UPDATE players SET current_bid=?, company=? WHERE id=?",
-            (bid_price, company, player_id)
+            (bid, company, player_id)
         )
 
         conn.commit()
@@ -90,14 +104,8 @@ def bid():
     conn.close()
 
     return redirect("/")
-
+    
 
 if __name__ == "__main__":
-    init_db()
-    load_dataset()
-
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
-
-
